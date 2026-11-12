@@ -1,3 +1,4 @@
+import type { GameSnapshot } from "./board";
 export type RoomStatus = "lobby" | "in_progress" | "completed" | "cancelled";
 export type Player = {
   id: string;
@@ -7,6 +8,7 @@ export type Player = {
   joined_at: string;
 };
 export type RoomState = {
+  game: GameSnapshot | null;
   id: string;
   room_code: string;
   host_name: string;

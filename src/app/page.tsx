@@ -48,7 +48,7 @@ export default function Home() {
         </div>
         <div
           className="arena-visual"
-          aria-label="Illustration of a trivia board planned for Phase 2"
+          aria-label="Illustration of the QuizArena trivia board"
         >
           <div className="orbit orbit-one" />
           <div className="orbit orbit-two" />
@@ -102,7 +102,7 @@ export default function Home() {
             </div>
           </div>
           <div className="preview-label">
-            A SNEAK PEEK AT THE ARENA · GAME BOARD COMING IN PHASE 2
+            A SNEAK PEEK AT THE ARENA · 25 CLUES. ONE SHARED ARENA.
           </div>
         </div>
       </section>
@@ -153,7 +153,7 @@ export default function Home() {
               <p>
                 Get everyone together in your live lobby.
                 <br />
-                The competition is coming next.
+                Explore 25 clues together.
               </p>
             </div>
           </article>

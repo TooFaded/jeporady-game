@@ -4,6 +4,51 @@ import { ZodError } from "zod";
 import { database } from "@/lib/db/server";
 import { hash } from "@/lib/utils/security";
 const messages: Record<string, [number, string]> = {
+  COMPETITION_NOT_CONFIGURED: [
+    503,
+    "Apply the Phase 3 database migration to enable competitive play.",
+  ],
+  PLAYER_ONLY: [403, "Only players can buzz. The host judges answers."],
+  BUZZ_INELIGIBLE: [
+    409,
+    "You have already attempted this clue or need to reconnect.",
+  ],
+  BUZZ_CLOSED: [409, "Buzzers are closed or another player buzzed first."],
+  NO_ELIGIBLE_PLAYERS: [
+    409,
+    "No connected players are eligible. Reveal the answer or wait for reconnection.",
+  ],
+  ALREADY_JUDGED: [409, "This attempt has already been judged."],
+  ANSWER_EXPIRED: [
+    409,
+    "Time is up. Mark incorrect or void this attempt without a penalty.",
+  ],
+  ROUND_PLAYED: [
+    409,
+    "This clue has attempts. Reveal and complete it to preserve scoring.",
+  ],
+  GAME_NOT_CONFIGURED: [
+    503,
+    "Apply the Phase 2 database migration to enable game boards.",
+  ],
+  INVALID_BOARD: [
+    400,
+    "Complete all five categories and 25 questions and answers before saving or starting.",
+  ],
+  STALE_GAME: [
+    409,
+    "The game changed in another tab. Refresh the latest state and try again.",
+  ],
+  INVALID_TRANSITION: [
+    409,
+    "That action is not available in the current game phase.",
+  ],
+  CLUE_UNAVAILABLE: [409, "That clue is unavailable or no longer active."],
+  VERSION_REQUIRED: [409, "Refresh the page to use the current game controls."],
+  HTTPS_REQUIRED: [
+    400,
+    "Production sessions require HTTPS. For local phone testing, start the server with npm run dev:lan and use its LAN address.",
+  ],
   NOT_CONFIGURED: [
     503,
     "The arena is not configured yet. Add the Supabase environment variables to get started.",
@@ -16,7 +61,7 @@ const messages: Record<string, [number, string]> = {
     401,
     "Join this room to continue. Your session may have expired.",
   ],
-  HOST_ONLY: [403, "Only the host can start the game."],
+  HOST_ONLY: [403, "Only the host can control the game."],
   EMPTY_ROOM: [409, "Invite at least one connected player before starting."],
   RATE_LIMITED: [429, "A few too many attempts. Please try again in a minute."],
   BAD_ORIGIN: [403, "This request must come from QuizArena."],
@@ -43,7 +88,7 @@ export function failure(error: unknown) {
       error instanceof Error ? error.name : "UnknownError",
     );
   return NextResponse.json(
-    { error: detail },
+    { error: detail, code: match?.[0] ?? "INTERNAL_ERROR" },
     { status, headers: { "Cache-Control": "no-store" } },
   );
 }
@@ -68,12 +113,20 @@ export async function limit(request: NextRequest, kind: "create" | "join") {
   if (error) throw error;
   if (!data) throw new Error("RATE_LIMITED");
 }
-export async function body(request: NextRequest) {
+export async function body(request: NextRequest, maxLength = 1024) {
   const raw = await request.text();
-  if (raw.length > 1024) throw new Error("BAD_REQUEST");
+  if (raw.length > maxLength) throw new Error("BAD_REQUEST");
   try {
     return JSON.parse(raw);
   } catch {
     throw new Error("BAD_REQUEST");
   }
+}
+
+export function requireSessionTransport(request: NextRequest) {
+  if (
+    process.env.NODE_ENV === "production" &&
+    request.nextUrl.protocol !== "https:"
+  )
+    throw new Error("HTTPS_REQUIRED");
 }

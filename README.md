@@ -1,6 +1,6 @@
 # QuizArena
 
-Phase 1 of a multiplayer trivia app: a responsive landing page, secure host and player sessions, room invitations, and a synchronized lobby. Starting a game moves it to a Phase 2 placeholder; boards, buzzers, AI generation, and scoring controls are deliberately not implemented.
+QuizArena includes secure multiplayer lobbies and a synchronized, host-controlled 5×5 trivia board. Hosts can edit 25 clues before starting, select clues, reveal answers, complete tiles, and end games. Competitive buzzers, Classic/Casual scoring, answer deadlines, and live/final rankings are implemented in Phase 3. AI generation remains future work. See [Phase 3 implementation and testing](docs/phase-three.md) and the earlier [Phase 2 notes](docs/phase-two.md).
 
 ## Local setup
 
@@ -8,8 +8,7 @@ Use Node.js 22 or newer and npm. The lockfile pins the installed Next.js 16 / Re
 
 ```sh
 npm ci
-cp .env.example .env.local
-# Fill in your Supabase project configuration.
+# Create .env.local with the variables listed below.
 npm run dev
 ```
 
@@ -18,7 +17,7 @@ Open http://localhost:3000. The landing page and entry forms render without cred
 ## Supabase setup
 
 1. Create a Supabase project (use a separate project for development/testing).
-2. Run `supabase/migrations/202611120001_phase_one.sql` in the Supabase SQL Editor, or link the project with the Supabase CLI and run `supabase db push`. Apply the migration once. It expects Supabase's `auth` and `realtime` schemas.
+2. Run `supabase/migrations/202611120001_phase_one.sql` in the Supabase SQL Editor, or link the project with the Supabase CLI and run `supabase db push`. Then apply `supabase/migrations/202611120002_game_board.sql` and `supabase/migrations/202611120003_competition.sql`. Apply each migration once, in order. It expects Supabase's `auth` and `realtime` schemas.
 3. In Realtime settings, disable **Allow public access**, enforcing private channels. This implementation uses private Broadcast and Presence, not Postgres Changes; no table publication is needed.
 4. Add the following environment variables to `.env.local` and your deployment environment:
 
@@ -54,14 +53,15 @@ tests/                  PostgreSQL-backed and application unit tests
 
 ### API
 
-All endpoints use POST, same-origin verification, and Zod-validated input. The room code is a locator, never an authentication credential.
+All endpoints use POST, same-origin verification, and Zod-validated input. The room code is a locator, never an authentication credential. Phase 3 adds authenticated player buzzes and host competition actions to the existing game endpoint; see [the action contract](docs/phase-three.md).
 
 - `/api/rooms`: create with `{ "name": "Alex" }`; returns a room code and sets the host cookie.
 - `/api/rooms/:code/join`: join with `{ "name": "Sam" }`; sets an independent player cookie. An existing authorized participant resumes their current seat.
 - `/api/rooms/:code/state`: fetch the authorized room state.
 - `/api/rooms/:code/heartbeat`: refresh the participant's connection lease and return state.
-- `/api/rooms/:code/start`: host-only transition to `in_progress` and creation of a game session.
-- `/api/rooms/:code/leave`: revoke the participant credential; host departure cancels the entire room.
+- `/api/rooms/:code/start`: host-only start with `{ "expectedVersion": 0 }` (use the current board version).
+- `/api/rooms/:code/leave`: revoke the participant credential; host departure cancels an unfinished room; leaving a completed game preserves it for the remaining participants.
+- `/api/rooms/:code/game`: host-only editor, save, start, select, reveal, complete, return, and end actions. See the [request contract](docs/phase-two.md).
 - `/api/rooms/:code/token`: exchange an HttpOnly session for a read/presence-only, short-lived Realtime JWT. The browser cannot use this token to mutate or read application tables.
 
 Database operations are isolated in a service layer, providing the future boundary for game and AI services. Only the service role can invoke mutation RPCs. Browser roles have no application-table grants or permissive RLS policies. The Realtime policy validates active room membership from the credential ID in the signed JWT and restricts topic access; clients can publish Presence only, never authoritative state broadcasts.
@@ -73,7 +73,7 @@ Database operations are isolated in a service layer, providing the future bounda
 - Up to 16 players plus the host. Disconnected players retain their nickname and seat until they explicitly leave or the room expires. This allows reconnection without duplicate identities.
 - Supabase private Broadcast delivers joins, starts, and explicit leaves; Presence join/leave/sync events trigger an authoritative refresh. Client-supplied Presence identities are never trusted.
 - Each active page sends a heartbeat every 10 seconds. A player is considered disconnected after 45 seconds without a heartbeat, visible by the next refresh (normally within 55 seconds). This derived status is authoritative; the stored `is_connected` flag alone is not a live connection indicator. Background tabs may be throttled and temporarily show as reconnecting. Returning to the tab refreshes immediately.
-- Realtime tokens renew every 40 seconds. Polling remains as a 10-second recovery path during transport interruption. Status labels distinguish a live channel from backup synchronization.
+- Realtime tokens renew after 30 seconds. Polling remains as a 10-second recovery path during transport interruption. Status labels distinguish a live channel from backup synchronization.
 - Closing a tab does not revoke a session; a refresh or reopening on the same browser resumes it. Explicit **Leave room** revokes the session. HttpOnly cookies are per room and browser profile, so use separate browsers/devices to test distinct people.
 - Rooms and cookies expire after 24 hours. On explicit host departure, all credentials are revoked and the room is cancelled. Already-authorized Realtime connections may retain access until their 60-second JWT expires; broadcasts contain only a change signal and Presence contains no private roster data. All API operations re-check membership immediately.
 - PostgreSQL rate-limit buckets cap creation at 5 and joins at 20 per minute per hashed IP. Vercel's overwritten `x-vercel-forwarded-for` is trusted only on Vercel; other environments deliberately share a `local` bucket. Configure a trusted ingress strategy before hosting elsewhere. Add Vercel firewall/edge limits for high-volume public deployment. Failed attempts consume quota, and buckets older than a day are removed opportunistically.
@@ -106,7 +106,7 @@ This optional test creates one test room, sends genuinely concurrent joins/start
 4. Try the same nickname with different capitalization; expect a friendly duplicate-name error. Test an invalid/nonexistent room code. Set the room's max_players to a small number in your test database and verify a full-room error.
 5. Disable B's network or close its tab. Within approximately 55 seconds it should show as reconnecting on A. Restore the network/reopen the room and confirm the original player returns without a duplicate entry.
 6. Confirm B has no Start button and a direct start request with B's cookie fails with 403. A request without a session must fail with 401. Anonymous database reads and score updates must fail.
-7. Start on A with a connected player. Both devices should show the Phase 2 placeholder; further joins are rejected. Refresh both pages to verify persisted state.
+7. Start on A with a connected player. Both devices should show the 5×5 board; further joins are rejected. Select, reveal, and complete a clue, checking both devices at each step. Refresh both pages to verify persisted state.
 8. In another lobby, leave as a player and rejoin with the same nickname. Close as host and confirm other sessions lose access. Test narrow mobile widths, keyboard focus, the confirmation dialog, and reduced-motion settings.
 
 ## Vercel deployment
@@ -115,13 +115,13 @@ Import this repository into Vercel using its Next.js preset. Select Node.js 22+ 
 
 ## Next phase
 
-Implement the interactive 5×5 game board, category/clue schema and host-controlled clue selection through the same server-authoritative transaction boundary. Keep buzzers and AI generation for their later phases.
+AI generation and special rounds remain future work.
 
 ## Toolchain notes
 
 Development and production builds explicitly use the supported Webpack builder because Turbopack’s worker port binding is restricted in the implementation environment. The optional macOS ARM64 Rolldown binding fixes an npm optional-dependency installation issue; other platforms use Vitest’s normal platform dependencies. A scoped `minimatch` override updates the ESLint dependency chain to the patched 11.x release.
 
-## Implementation verification (November 12, 2026)
+## Original Phase 1 verification (historical)
 
 - TypeScript strict check: passed.
 - ESLint: passed without warnings.
@@ -131,3 +131,7 @@ Development and production builds explicitly use the supported Webpack builder b
 - Local HTTP smoke checks: landing, host, and join pages returned 200; unconfigured room creation returned 503; missing participant credentials returned 401; a cross-origin mutation returned 403.
 - Supabase credentials were not available. Hosted migrations, live concurrency testing, WebSocket delivery, and two-device acceptance remain unverified until the project is configured.
 - Browser-control tooling failed during preview setup. Desktop/mobile visual inspection and interactive browser acceptance remain to be performed. The local preview server was stopped after HTTP verification.
+
+## Lobby reliability fixes
+
+See [Phase 1 stabilization](docs/phase-one-stabilization.md) for root causes, the new client/channel lifecycle, LAN development setup, regression coverage, and phone/two-browser retest instructions. Use `npm run dev:lan` for local phone testing.

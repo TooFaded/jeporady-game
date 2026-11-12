@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useId } from "react";
 import { Button } from ".";
 export function ConfirmDialog({
   open,
@@ -8,6 +8,8 @@ export function ConfirmDialog({
   busy,
   onCancel,
   onConfirm,
+  confirmLabel = "Leave room",
+  cancelLabel = "Stay here",
 }: {
   open: boolean;
   title: string;
@@ -15,7 +17,10 @@ export function ConfirmDialog({
   busy: boolean;
   onCancel: () => void;
   onConfirm: () => void;
+  confirmLabel?: string;
+  cancelLabel?: string;
 }) {
+  const id = useId();
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     if (open) ref.current?.showModal();
@@ -25,21 +30,21 @@ export function ConfirmDialog({
     <dialog
       ref={ref}
       className="confirm-dialog"
-      aria-labelledby="dialog-title"
-      aria-describedby="dialog-description"
+      aria-labelledby={`${id}-title`}
+      aria-describedby={`${id}-description`}
       onCancel={(event) => {
         event.preventDefault();
         if (!busy) onCancel();
       }}
     >
-      <h2 id="dialog-title">{title}</h2>
-      <p id="dialog-description">{description}</p>
+      <h2 id={`${id}-title`}>{title}</h2>
+      <p id={`${id}-description`}>{description}</p>
       <div className="dialog-actions">
         <Button variant="secondary" onClick={onCancel} disabled={busy}>
-          Stay here
+          {cancelLabel}
         </Button>
         <Button onClick={onConfirm} busy={busy}>
-          Leave room
+          {confirmLabel}
         </Button>
       </div>
     </dialog>

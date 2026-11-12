@@ -49,7 +49,16 @@ try {
     extra.filter((r) => r.error?.message.includes("FULL")).length,
     5,
   );
-  const starts = await Promise.all([rpc("start", host), rpc("start", host)]);
+  const state = await rpc("state", host);
+  assert.ifError(state.error);
+  const start = () =>
+    db.rpc("game_command", {
+      p_action: "start",
+      p_code: code,
+      p_token_hash: host,
+      p_expected_version: state.data.game.version,
+    });
+  const starts = await Promise.all([start(), start()]);
   assert.equal(starts.filter((r) => !r.error).length, 1);
   const forbidden = await anon.rpc("room_command", {
     p_action: "state",

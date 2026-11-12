@@ -37,6 +37,7 @@ function context(action: string) {
 }
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.stubEnv("NODE_ENV", "test");
   vi.stubEnv("RATE_LIMIT_SALT", "test-salt-at-least-thirty-two-characters");
   vi.stubEnv(
     "SUPABASE_JWT_SECRET",
@@ -45,6 +46,64 @@ beforeEach(() => {
   mocks.rpc.mockResolvedValue({ data: true, error: null });
 });
 describe("HTTP security boundary", () => {
+  it("accepts a LAN-origin join and issues a host-only development cookie", async () => {
+    mocks.command.mockResolvedValue({});
+    const req = new NextRequest(
+      "http://192.168.1.50:3000/api/rooms/ABCDEF/join",
+      {
+        method: "POST",
+        headers: {
+          host: "192.168.1.50:3000",
+          origin: "http://192.168.1.50:3000",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ name: "Phone player" }),
+      },
+    );
+    const result = await operate(req, context("join"));
+    expect(result.status).toBe(201);
+    const cookie = result.headers.get("set-cookie")!;
+    expect(cookie).toContain("HttpOnly");
+    expect(cookie).toContain("SameSite=lax");
+    expect(cookie).not.toContain("Secure");
+    expect(cookie).not.toContain("Domain=");
+  });
+  it("rejects production LAN HTTP before creating an orphaned membership", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const result = await operate(
+      request("/api/rooms/ABCDEF/join", { name: "Sam" }),
+      context("join"),
+    );
+    expect(result.status).toBe(400);
+    expect((await result.json()).code).toBe("HTTPS_REQUIRED");
+    expect(mocks.command).not.toHaveBeenCalled();
+  });
+  it("retains Secure cookies on production HTTPS", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    mocks.command.mockResolvedValue({});
+    const req = new NextRequest("https://quiz.example/api/rooms/ABCDEF/join", {
+      method: "POST",
+      headers: {
+        origin: "https://quiz.example",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ name: "Sam" }),
+    });
+    const result = await operate(req, context("join"));
+    expect(result.status).toBe(201);
+    expect(result.headers.get("set-cookie")).toContain("Secure");
+  });
+  it("resumes an existing host session instead of replacing it with a player cookie", async () => {
+    mocks.command.mockResolvedValue({ viewer: { role: "host" } });
+    const result = await operate(
+      request("/api/rooms/ABCDEF/join", { name: "Sam" }, "host-secret"),
+      context("join"),
+    );
+    expect(result.status).toBe(200);
+    expect(result.headers.get("set-cookie")).toBeNull();
+    expect(mocks.command).toHaveBeenCalledTimes(1);
+    expect(mocks.command.mock.calls[0][0]).toBe("state");
+  });
   it("preserves the real request host when Next.js normalizes loopback URLs", async () => {
     mocks.createRoom.mockResolvedValue("ABCDEF");
     const req = new NextRequest("http://localhost:3000/api/rooms", {
