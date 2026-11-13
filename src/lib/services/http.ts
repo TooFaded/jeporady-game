@@ -1,9 +1,33 @@
 import "server-only";
+import { configuredOrigin } from "@/lib/public-origin";
 import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { database } from "@/lib/db/server";
 import { hash } from "@/lib/utils/security";
 const messages: Record<string, [number, string]> = {
+  APP_ORIGIN_REQUIRED: [
+    503,
+    "Configure APP_PUBLIC_ORIGIN with this deployment’s HTTPS origin.",
+  ],
+  APP_ORIGIN_INVALID: [
+    503,
+    "APP_PUBLIC_ORIGIN must be a valid application origin (HTTPS in production).",
+  ],
+  TEAM_NOT_CONFIGURED: [
+    503,
+    "Apply the team gameplay migration to enable teams.",
+  ],
+  TEAMS_FROZEN: [409, "Team assignments cannot change after the game starts."],
+  TEAMS_LOCKED: [403, "The host has locked team selection."],
+  TEAMS_UNLOCKED: [409, "Lock team selection before starting."],
+  TEAM_UNASSIGNED: [409, "Assign every player to a team before starting."],
+  TEAM_EMPTY: [409, "At least two teams need players before starting."],
+  TEAM_FULL: [
+    409,
+    "Team capacity would be exceeded. Increase capacity or choose another team.",
+  ],
+  INVALID_TEAM: [400, "That player or team does not belong to this room."],
+  TEAM_DISTINCT: [409, "Choose a unique team name and an unused color."],
   COMPETITION_NOT_CONFIGURED: [
     503,
     "Apply the Phase 3 database migration to enable competitive play.",
@@ -93,7 +117,10 @@ export function failure(error: unknown) {
   );
 }
 export function sameOrigin(request: NextRequest) {
+  requireSessionTransport(request);
   const origin = request.headers.get("origin");
+  if (process.env.NODE_ENV === "production" && origin !== configuredOrigin())
+    throw new Error("BAD_ORIGIN");
   // Next.js normalizes loopback URLs internally; preserve the actual request host.
   const expectedOrigin = `${request.nextUrl.protocol}//${request.headers.get("host") ?? request.nextUrl.host}`;
   if (!origin || origin !== expectedOrigin) throw new Error("BAD_ORIGIN");

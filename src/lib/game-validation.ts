@@ -53,6 +53,58 @@ export const boardDraftSchema = z
 const active = { expectedVersion: version, clueId: z.uuid() };
 export const gameRequestSchema = z.discriminatedUnion("action", [
   z
+    .object({
+      action: z.literal("team_setup"),
+      expectedVersion: version,
+      mode: z.enum(["solo", "team"]),
+      count: z.number().int().min(2).max(4),
+      capacity: z.number().int().min(1).max(16),
+    })
+    .strict(),
+  z
+    .object({
+      action: z.literal("team_edit"),
+      expectedVersion: version,
+      teamId: z.uuid(),
+      name: z.string().trim().min(1).max(32),
+      color: z.enum([
+        "blue",
+        "gold",
+        "purple",
+        "green",
+        "teal",
+        "rose",
+        "orange",
+        "indigo",
+      ]),
+    })
+    .strict(),
+  z
+    .object({
+      action: z.literal("team_lock"),
+      expectedVersion: version,
+      locked: z.boolean(),
+    })
+    .strict(),
+  z
+    .object({ action: z.literal("balance_teams"), expectedVersion: version })
+    .strict(),
+  z
+    .object({
+      action: z.literal("choose_team"),
+      expectedVersion: version,
+      teamId: z.uuid().nullable(),
+    })
+    .strict(),
+  z
+    .object({
+      action: z.literal("assign_team"),
+      expectedVersion: version,
+      teamId: z.uuid().nullable(),
+      playerId: z.uuid(),
+    })
+    .strict(),
+  z
     .object({ action: z.literal("buzz"), clueId: z.uuid(), roundId: z.uuid() })
     .strict(),
   z

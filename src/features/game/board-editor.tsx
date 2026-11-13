@@ -22,7 +22,17 @@ export function BoardEditor({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const game = room.game;
-  const ready = room.players.some((player) => player.is_connected);
+  const teamRules = game?.competition;
+  const teamsReady =
+    teamRules?.play_mode !== "team" ||
+    (!!teamRules.teams_locked &&
+      room.players.every((p) =>
+        teamRules.teams?.some((t) => t.members.some((m) => m.id === p.id)),
+      ) &&
+      (teamRules.teams?.filter((t) => t.members.some((m) => !m.left)).length ??
+        0) >= 2);
+  const ready =
+    room.players.some((player) => player.is_connected) && teamsReady;
   const stale = !!editor && !!game && editor.version !== game.version;
   async function load() {
     setBusy(true);
@@ -271,7 +281,7 @@ export function BoardEditor({
         ) : dirty ? (
           "You have unsaved changes. Save all 25 clues before starting."
         ) : !ready ? (
-          "Waiting for at least one connected player."
+          "Assign all players, populate at least two teams and lock selection in Team Mode. At least one player must be connected."
         ) : (
           "Your board is ready. Bring on the friendly competition."
         )}

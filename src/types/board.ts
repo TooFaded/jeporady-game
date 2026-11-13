@@ -56,6 +56,10 @@ export type BoardDraft = { categories: EditorCategory[] };
 export type BoardEditorSnapshot = BoardDraft & { id: string; version: number };
 
 export type CompetitionSnapshot = {
+  play_mode?: "solo" | "team";
+  teams_locked?: boolean;
+  team_capacity?: number;
+  teams?: Team[];
   scoring_mode: "classic" | "casual";
   answer_seconds: number;
   server_time: string;
@@ -64,6 +68,8 @@ export type CompetitionSnapshot = {
     id: string;
     player_id: string;
     nickname: string;
+    team_id?: string;
+    team_name?: string;
     deadline: string;
     outcome: "correct" | "incorrect" | "void" | null;
   } | null;
@@ -73,6 +79,32 @@ export type CompetitionSnapshot = {
     nickname: string;
     rank: number;
     score: number;
+    correct: number;
+    incorrect: number;
+  }[];
+};
+
+export type Team = {
+  id: string;
+  name: string;
+  color:
+    | "blue"
+    | "gold"
+    | "purple"
+    | "green"
+    | "teal"
+    | "rose"
+    | "orange"
+    | "indigo";
+  position: number;
+  score: number;
+  rank: number;
+  correct: number;
+  incorrect: number;
+  members: {
+    id: string;
+    nickname: string;
+    left: boolean;
     correct: number;
     incorrect: number;
   }[];

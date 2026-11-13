@@ -2,21 +2,28 @@
 import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { QRCodeSVG } from "qrcode.react";
 import { ArrowRight, Crown, LogOut, Radio, Users } from "lucide-react";
 import { Button, Card, ErrorMessage, Loading, Status } from "@/components/ui";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useRoom } from "./use-room";
 import { BoardEditor } from "@/features/game/board-editor";
+import { TeamLobby } from "@/features/game/team-lobby";
+import { invitationUrl } from "@/lib/invitations";
 import { GameView } from "@/features/game/game-view";
 import { api } from "./api";
 import { PlayerList } from "./player-list";
-import { RoomCode } from "./room-code";
+import { Invitation } from "./invitation";
 import type { RoomState } from "@/types/game";
 const subscribeToOrigin = () => () => {};
 const getOrigin = () => window.location.origin;
 const getServerOrigin = () => "";
-export function Lobby({ code }: { code: string }) {
+export function Lobby({
+  code,
+  publicOrigin = null,
+}: {
+  code: string;
+  publicOrigin?: string | null;
+}) {
   const {
     room,
     error,
@@ -37,7 +44,8 @@ export function Lobby({ code }: { code: string }) {
     getOrigin,
     getServerOrigin,
   );
-  const invite = origin ? `${origin}/join/${code}` : "";
+  const inviteOrigin = publicOrigin ?? origin;
+  const invite = inviteOrigin ? invitationUrl(inviteOrigin, code) : "";
   async function leave() {
     setBusy(true);
     setActionError(null);
@@ -114,6 +122,9 @@ export function Lobby({ code }: { code: string }) {
       {room.status !== "lobby" && (
         <GameView room={room} onRoom={onRoom} onRefresh={refresh} />
       )}
+      {room.status === "lobby" && (
+        <TeamLobby room={room} onRoom={onRoom} onRefresh={refresh} />
+      )}
       {room.status === "lobby" && host && (
         <BoardEditor room={room} onRoom={onRoom} />
       )}
@@ -145,7 +156,11 @@ export function Lobby({ code }: { code: string }) {
                 </div>
                 <span className="host-label">HOST</span>
               </div>
-              <PlayerList players={room.players} self={room.viewer.player_id} />
+              <PlayerList
+                players={room.players}
+                self={room.viewer.player_id}
+                hideScores={room.game?.competition?.play_mode === "team"}
+              />
               <div className="roster-bottom">
                 <span className="live-dot" /> Players appear automatically as
                 they join.
@@ -158,22 +173,7 @@ export function Lobby({ code }: { code: string }) {
                 </span>
                 <h2>Bring your people.</h2>
                 <p>Share the code. Or scan, join, and settle in.</p>
-                <RoomCode code={code} invite={invite} />
-                {invite && (
-                  <>
-                    <div className="qr-wrap">
-                      <QRCodeSVG
-                        value={invite}
-                        size={132}
-                        marginSize={2}
-                        title="Scan to join this QuizArena room"
-                      />
-                    </div>
-                    <a className="invite-url" href={invite}>
-                      {invite}
-                    </a>
-                  </>
-                )}
+                <Invitation key={invite} code={code} url={invite} />
                 <div className="invite-caption">
                   Any phone. Any browser. Everyone’s welcome.
                 </div>

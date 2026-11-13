@@ -38,6 +38,7 @@ function context(action: string) {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.stubEnv("NODE_ENV", "test");
+  vi.stubEnv("APP_PUBLIC_ORIGIN", "https://quiz.example");
   vi.stubEnv("RATE_LIMIT_SALT", "test-salt-at-least-thirty-two-characters");
   vi.stubEnv(
     "SUPABASE_JWT_SECRET",

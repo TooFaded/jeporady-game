@@ -271,7 +271,11 @@ export function GameView({
           <Users size={18} /> The crew{" "}
           <span>{room.players.length} players</span>
         </summary>
-        <PlayerList players={room.players} self={room.viewer.player_id} />
+        <PlayerList
+          players={room.players}
+          self={room.viewer.player_id}
+          hideScores={room.game?.competition?.play_mode === "team"}
+        />
       </details>
       {host && phase !== "completed" && (
         <div className="end-game-row">

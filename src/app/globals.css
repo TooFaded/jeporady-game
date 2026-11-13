@@ -871,7 +871,7 @@ footer > span:nth-child(2) {
   padding: 10px;
   background: white;
   border-radius: 10px;
-  width: 152px;
+  width: min(100%, 212px);
   margin: 26px auto 14px;
 }
 .invite-url {
@@ -1996,4 +1996,109 @@ footer > span:nth-child(2) {
 .host-answer-reference p {
   margin-top: 12px;
   overflow-wrap: anywhere;
+}
+.team-lobby {
+  padding: 24px;
+  margin-bottom: 24px;
+}
+.team-settings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: end;
+  padding: 16px 0;
+}
+.team-lobby label {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.team-lobby input,
+.team-lobby select {
+  max-width: 100%;
+  min-width: 0;
+  border: 1px solid #455576;
+  border-radius: 8px;
+  background: #14213b;
+  color: #f2f5ff;
+  padding: 10px;
+}
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 16px;
+  margin: 20px 0;
+}
+.team-card {
+  border: 1px solid #314565;
+  border-top: 4px solid var(--team-color, #7ca6ff);
+  border-radius: 12px;
+  padding: 18px;
+  background: #111d32;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.team-blue {
+  --team-color: #7ca6ff;
+}
+.team-gold {
+  --team-color: #f6ce70;
+}
+.team-purple {
+  --team-color: #c1a0ff;
+}
+.team-green {
+  --team-color: #7de0a5;
+}
+.team-teal {
+  --team-color: #6edbdb;
+}
+.team-rose {
+  --team-color: #f999b6;
+}
+.team-orange {
+  --team-color: #ffb576;
+}
+.team-indigo {
+  --team-color: #a7aaff;
+}
+.team-card h3 {
+  color: var(--team-color);
+  margin-bottom: 12px;
+}
+.team-card ul {
+  list-style: none;
+  padding: 0;
+  margin: 14px 0;
+}
+.team-card li {
+  padding: 6px 0;
+}
+.team-points {
+  font-size: 26px;
+}
+.team-assignments > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: space-between;
+  align-items: center;
+  margin: 10px 0;
+}
+.team-assignments select {
+  width: min(100%, 240px);
+}
+.team-lobby :is(input, select):focus-visible {
+  outline: 3px solid #f6ce70;
+  outline-offset: 2px;
+}
+
+.qr-wrap svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.room-invitation {
+  min-width: 0;
+  grid-column: 1/-1;
 }

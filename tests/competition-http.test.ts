@@ -108,4 +108,69 @@ describe("competitive HTTP boundary", () => {
       ).toBe(400);
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
+  it("dispatches team choice with authenticated identity and rejects choosing for someone else", async () => {
+    const teamId = randomUUID();
+    const result = await POST(
+      request({ action: "choose_team", expectedVersion: 1, teamId }),
+      context(),
+    );
+    expect(result.status).toBe(200);
+    expect(mocks.rpc).toHaveBeenCalledWith(
+      "team_command",
+      expect.objectContaining({
+        p_token_hash: hash("private-test-credential"),
+        p_action: "choose_team",
+        p_data: { expectedVersion: 1, teamId },
+      }),
+    );
+    mocks.rpc.mockClear();
+    expect(
+      (
+        await POST(
+          request({
+            action: "choose_team",
+            expectedVersion: 1,
+            teamId,
+            playerId: randomUUID(),
+          }),
+          context(),
+        )
+      ).status,
+    ).toBe(400);
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+  it("does not use a session cookie belonging to another room", async () => {
+    const req = new NextRequest("http://localhost:3000/api/rooms/ABCDEF/game", {
+      method: "POST",
+      headers: {
+        origin: "http://localhost:3000",
+        "content-type": "application/json",
+        cookie: "qa_session_GHJKLM=other-room-session",
+      },
+      body: JSON.stringify(buzz()),
+    });
+    expect((await POST(req, context())).status).toBe(401);
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+  it("rejects invented team scores and oversized capacities", async () => {
+    for (const input of [
+      {
+        action: "team_setup",
+        expectedVersion: 1,
+        mode: "team",
+        count: 2,
+        capacity: 17,
+      },
+      {
+        action: "team_edit",
+        expectedVersion: 1,
+        teamId: randomUUID(),
+        name: "Blue",
+        color: "blue",
+        score: 999,
+      },
+    ])
+      expect((await POST(request(input), context())).status).toBe(400);
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
 });

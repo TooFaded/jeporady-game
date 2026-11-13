@@ -4,9 +4,11 @@ import type { Player } from "@/types/game";
 export function PlayerList({
   players,
   self,
+  hideScores = false,
 }: {
   players: Player[];
   self: string | null;
+  hideScores?: boolean;
 }) {
   if (!players.length)
     return (
@@ -32,10 +34,12 @@ export function PlayerList({
               {player.is_connected ? "Ready to play" : "Reconnecting…"}
             </Status>
           </div>
-          <span className="player-score">
-            {player.score}
-            <small>PTS</small>
-          </span>
+          {!hideScores && (
+            <span className="player-score">
+              {player.score}
+              <small>PTS</small>
+            </span>
+          )}
         </li>
       ))}
     </ul>

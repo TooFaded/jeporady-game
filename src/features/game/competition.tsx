@@ -14,6 +14,8 @@ export function Leaderboard({
   competition: CompetitionSnapshot;
   final?: boolean;
 }) {
+  if (competition.play_mode === "team")
+    return <TeamLeaderboard competition={competition} final={final} />;
   const leaders = competition.leaderboard.filter((p) => p.rank === 1);
   return (
     <Card className="leaderboard">
@@ -229,7 +231,9 @@ export function CompetitionControls({
       {answering && attempt && (
         <div className="answer-turn" aria-live="polite">
           <strong>
-            {winner ? "You’re up!" : `${attempt.nickname} buzzed first.`}
+            {winner
+              ? `You’re up!${attempt?.team_name ? ` · ${attempt.team_name}` : ""}`
+              : `${attempt.nickname}${attempt.team_name ? ` · ${attempt.team_name}` : ""} buzzed first.`}
           </strong>
           <span
             className="answer-countdown"
@@ -303,9 +307,11 @@ export function CompetitionControls({
               {busy
                 ? "Waiting for server confirmation…"
                 : winner
-                  ? "You’re up!"
+                  ? `You’re up!${attempt?.team_name ? ` · ${attempt.team_name}` : ""}`
                   : attempted
-                    ? "You’ve already attempted this clue."
+                    ? c.play_mode === "team"
+                      ? "Your team has already attempted this clue."
+                      : "You’ve already attempted this clue."
                     : open
                       ? "Buzz to answer!"
                       : answering
@@ -325,7 +331,7 @@ export function CompetitionControls({
       <ConfirmDialog
         open={voiding}
         title="Void this attempt?"
-        description="No points will change. This player stays ineligible for this clue. Buzzers will close so you can reopen them or reveal the answer."
+        description="No points will change. This player (or their entire team in Team Mode) stays ineligible for this clue. Buzzers will close so you can reopen them or reveal the answer."
         busy={busy}
         confirmLabel="Void attempt"
         cancelLabel="Keep answering"
@@ -333,5 +339,60 @@ export function CompetitionControls({
         onConfirm={() => void act("void")}
       />
     </div>
+  );
+}
+
+function TeamLeaderboard({
+  competition,
+  final,
+}: {
+  competition: CompetitionSnapshot;
+  final: boolean;
+}) {
+  const teams = [...(competition.teams ?? [])]
+    .filter((t) => t.members.length > 0)
+    .sort((a, b) => b.score - a.score || a.position - b.position);
+  const winners = teams.filter((t) => t.rank === 1);
+  return (
+    <Card className="leaderboard">
+      <h2>{final ? "Final team rankings" : "Team leaderboard"}</h2>
+      {final && winners.length > 0 && (
+        <p className="winner-message">
+          {winners.length > 1 ? "Shared team victory: " : "Winning team: "}
+          {winners.map((t) => t.name).join(" & ")}!
+        </p>
+      )}
+      <div className="team-grid">
+        {teams.map((t) => (
+          <section key={t.id} className={`team-card team-${t.color}`}>
+            <h3>
+              #{t.rank} · {t.name}
+            </h3>
+            <strong className="team-points">
+              {t.score.toLocaleString("en-US")} points
+            </strong>
+            <p>
+              {t.correct} correct · {t.incorrect} incorrect
+            </p>
+            <ul>
+              {t.members.map((p) => (
+                <li key={p.id}>
+                  {p.nickname}
+                  {p.left ? " (left)" : ""}
+                  <small>
+                    {" "}
+                    · {p.correct} correct / {p.incorrect} incorrect
+                  </small>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
+      <p className="input-hint">
+        Team totals determine rank. Member counts show individual contributions,
+        not separate scores.
+      </p>
+    </Card>
   );
 }

@@ -13,7 +13,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "dev:lan": "next dev --webpack --hostname 0.0.0.0",
-    "test:competition:live": "node --env-file=.env.local scripts/test-competition-live.mjs"
+    "test:competition:live": "node --env-file=.env.local scripts/test-competition-live.mjs",
+    "check:production": "node scripts/check-production.mjs"
   },
   "engines": {
     "node": ">=22.0.0"

@@ -9,6 +9,31 @@ export async function gameCommand(
   tokenHash: string,
   request: GameRequest,
 ): Promise<RoomState | BoardEditorSnapshot> {
+  if (
+    [
+      "team_setup",
+      "team_edit",
+      "team_lock",
+      "balance_teams",
+      "choose_team",
+      "assign_team",
+    ].includes(request.action)
+  ) {
+    const { action, ...data } = request;
+    const { data: room, error } = await database().rpc("team_command", {
+      p_code: code,
+      p_token_hash: tokenHash,
+      p_action: action,
+      p_expected_version:
+        "expectedVersion" in request ? request.expectedVersion : null,
+      p_data: data,
+    });
+    if (error)
+      throw new RoomError(
+        error.code === "PGRST202" ? "TEAM_NOT_CONFIGURED" : error.message,
+      );
+    return room as RoomState;
+  }
   const competitive = [
     "buzz",
     "configure",

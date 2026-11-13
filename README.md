@@ -1,6 +1,6 @@
 # QuizArena
 
-QuizArena includes secure multiplayer lobbies and a synchronized, host-controlled 5×5 trivia board. Hosts can edit 25 clues before starting, select clues, reveal answers, complete tiles, and end games. Competitive buzzers, Classic/Casual scoring, answer deadlines, and live/final rankings are implemented in Phase 3. AI generation remains future work. See [Phase 3 implementation and testing](docs/phase-three.md) and the earlier [Phase 2 notes](docs/phase-two.md).
+QuizArena includes secure multiplayer lobbies and a synchronized, host-controlled 5×5 trivia board. Hosts can edit 25 clues before starting, select clues, reveal answers, complete tiles, and end games. Competitive buzzers, Classic/Casual scoring, answer deadlines, and live/final rankings are implemented in Phase 3. Solo and Team Modes are available, with canonical production invitations and QR codes. AI generation remains future work. See [Team Mode and production deployment](docs/phase-three-five.md), [Phase 3 implementation and testing](docs/phase-three.md) and the earlier [Phase 2 notes](docs/phase-two.md).
 
 ## Local setup
 
@@ -17,7 +17,7 @@ Open http://localhost:3000. The landing page and entry forms render without cred
 ## Supabase setup
 
 1. Create a Supabase project (use a separate project for development/testing).
-2. Run `supabase/migrations/202611120001_phase_one.sql` in the Supabase SQL Editor, or link the project with the Supabase CLI and run `supabase db push`. Then apply `supabase/migrations/202611120002_game_board.sql` and `supabase/migrations/202611120003_competition.sql`. Apply each migration once, in order. It expects Supabase's `auth` and `realtime` schemas.
+2. Run `supabase/migrations/202611120001_phase_one.sql` in the Supabase SQL Editor, or link the project with the Supabase CLI and run `supabase db push`. Then apply `supabase/migrations/202611120002_game_board.sql` `supabase/migrations/202611120003_competition.sql`, and `supabase/migrations/202611120004_teams.sql`. Apply each migration once, in order. It expects Supabase's `auth` and `realtime` schemas.
 3. In Realtime settings, disable **Allow public access**, enforcing private channels. This implementation uses private Broadcast and Presence, not Postgres Changes; no table publication is needed.
 4. Add the following environment variables to `.env.local` and your deployment environment:
 
@@ -27,6 +27,7 @@ Open http://localhost:3000. The landing page and entry forms render without cred
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public anon key or publishable key; used only for Realtime                                          |
 | `SUPABASE_SERVICE_ROLE_KEY`     | Server-only service role key for guarded database RPCs                                              |
 | `SUPABASE_JWT_SECRET`           | Project's **legacy HS256 JWT signing secret**, used to issue 60-second, room-scoped Realtime tokens |
+| `APP_PUBLIC_ORIGIN`             | Required canonical HTTPS origin in production; leave blank for local LAN development                |
 | `RATE_LIMIT_SALT`               | Random secret, at least 32 characters; generate with `openssl rand -hex 32`                         |
 
 The JWT secret is **not** an API key. This implementation requires a project that still accepts its legacy HS256 signing secret. If that signing key is unavailable or revoked, configure an accepted custom signing key and update the token signer before deployment; do not substitute a publishable, secret API, or service-role key for the JWT signing secret. Never prefix either server secret with `NEXT_PUBLIC_`.
@@ -111,7 +112,7 @@ This optional test creates one test room, sends genuinely concurrent joins/start
 
 ## Vercel deployment
 
-Import this repository into Vercel using its Next.js preset. Select Node.js 22+ and configure all five environment variables for the intended environment. Apply the migration and private Realtime settings to that environment's Supabase project before inviting players. Use HTTPS; no custom WebSocket server is required. Run the checks and the two-device acceptance test against the preview deployment, then promote it. No deployment is performed by this repository itself.
+Import this repository into Vercel using its Next.js preset. Select Node.js 22+ and configure all six environment variables for the intended environment. Apply all four migrations and private Realtime settings to that environment's Supabase project before inviting players. Use HTTPS; no custom WebSocket server is required. Run the checks and the two-device acceptance test against the preview deployment, then promote it. No deployment is performed by this repository itself.
 
 ## Next phase
 

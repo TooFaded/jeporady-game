@@ -68,6 +68,7 @@ beforeAll(async () => {
     "202611120001_phase_one.sql",
     "202611120002_game_board.sql",
     "202611120003_competition.sql",
+    "202611120004_teams.sql",
   ])
     await db.exec(readFileSync(`supabase/migrations/${file}`, "utf8"));
 });

@@ -20,6 +20,7 @@ export function RoomCode({ code, invite }: { code: string; invite: string }) {
       <Button
         variant="secondary"
         className="full-width"
+        disabled={!invite}
         onClick={async () => {
           try {
             await navigator.clipboard.writeText(invite);

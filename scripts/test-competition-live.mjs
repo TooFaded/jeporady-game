@@ -58,6 +58,23 @@ try {
   await Promise.all(
     players.map((token, i) => room("join", token, `Contender ${i + 1}`)),
   );
+  if (process.env.TEST_TEAM_MODE === "true") {
+    for (const [action, data] of [
+      ["team_setup", { mode: "team", count: 2, capacity: 4 }],
+      ["balance_teams", {}],
+      ["team_lock", { locked: true }],
+    ]) {
+      const state = await room();
+      const result = await db.rpc("team_command", {
+        p_code: code,
+        p_token_hash: host,
+        p_action: action,
+        p_expected_version: state.game.version,
+        p_data: data,
+      });
+      assert.ifError(result.error);
+    }
+  }
   await game("start");
   const tiles = (await room()).game.categories.flatMap((c) => c.clues);
   for (const tile of tiles.slice(0, 5)) {
@@ -92,7 +109,10 @@ try {
     await game("complete", tile.id);
   }
   const final = await game("end");
-  const leaderboard = final.game.competition.leaderboard;
+  const leaderboard =
+    process.env.TEST_TEAM_MODE === "true"
+      ? final.game.competition.teams
+      : final.game.competition.leaderboard;
   assert.equal(
     leaderboard.reduce((n, p) => n + p.correct, 0),
     5,
